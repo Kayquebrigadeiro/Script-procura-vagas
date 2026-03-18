@@ -1,0 +1,60 @@
+# GUIA RAPIDO - Bot de Candidaturas
+
+## INSTALACAO (Fazer 1 vez)
+
+```bash
+pip install -r requirements.txt
+```
+
+## CONFIGURACAO (Fazer 1 vez)
+
+Edite `config.py` e ajuste:
+- Seu telefone real
+- Suas palavras-chave
+- Limites de candidaturas
+
+## USO DIARIO
+
+### 1. Abrir Chrome
+```bash
+abrir_chrome.bat
+```
+
+### 2. Fazer Login
+No Chrome que abriu, faca login em:
+- LinkedIn
+- Catho  
+- InfoJobs
+- Indeed
+
+### 3. Executar Bot
+```bash
+python main.py
+```
+
+## TESTAR ANTES
+
+```bash
+python teste.py
+```
+
+## ARQUIVOS IMPORTANTES
+
+- `config.py` - Suas configuracoes
+- `candidaturas.json` - Historico (nao apague!)
+- `bot.log` - Logs de execucao
+- `README.md` - Documentacao completa
+
+## DICAS
+
+- Comece com limites baixos (5-10)
+- Execute diariamente
+- Verifique os logs se der erro
+- Mantenha o Chrome aberto durante execucao
+
+## PROBLEMAS?
+
+1. Leia `bot.log`
+2. Execute `python teste.py`
+3. Verifique se fez login nos 4 sites
+4. Verifique se o Chrome esta aberto com debug port
