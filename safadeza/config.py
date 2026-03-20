@@ -3,15 +3,13 @@ Configurações do Bot de Candidaturas Automáticas
 """
 
 # ============================================================================
-# DADOS PESSOAIS
+# DADOS PESSOAIS — ajuste antes de rodar
 # ============================================================================
 PERFIL = {
-    "nome_completo": "FUTURO",
+    "nome_completo": "Kayque Moura Gregorio",
     "email": "gregoriokayque352@gmail.com",
     "telefone": "(11) 98058-4791",
     "curriculo_path": "c:\\safadeza\\Curriculo.pdf",
-    
-    # Dados adicionais (preencha conforme necessário)
     "linkedin_url": "",
     "github_url": "",
     "portfolio_url": "",
@@ -24,59 +22,40 @@ PERFIL = {
 BUSCA = {
     "palavras_chave": [
         "Desenvolvedor Python Junior",
-        "Desenvolvedor Java Junior",
         "Desenvolvedor React Junior",
         "Desenvolvedor JavaScript Junior",
-        "Desenvolvedor Node.js Junior",
-        "Desenvolvedor Backend Junior",
         "Desenvolvedor Frontend Junior",
         "Desenvolvedor Fullstack Junior",
     ],
-    
+
     "localizacao": "São Paulo, SP",
-    
-    # Filtros específicos por site
+
     "linkedin": {
-        "easy_apply_only": False,  # DESATIVADO - candidatar em todas as vagas
         "remote": False,
-        "experience_level": ["entry_level", "associate"]  # Junior
+        "experience_level": ["entry_level", "associate"],
     },
-    
-    "catho": {
-        "home_office": False,
-        "nivel": "junior"
-    },
-    
-    "infojobs": {
-        "home_office": False,
-        "nivel": "junior"
-    },
-    
-    "indeed": {
-        "remote": False,
-        "experience": "entry_level"
-    }
+    "catho":    {"nivel": "junior"},
+    "infojobs": {"nivel": "junior"},
+    "indeed":   {"experience": "entry_level"},
 }
 
 # ============================================================================
-# LIMITES E CONTROLES
+# LIMITES — comece baixo para testar
 # ============================================================================
 LIMITES = {
-    "max_candidaturas_por_site": 10,
-    "max_candidaturas_total": 40,
-    "delay_entre_candidaturas": 5,  # segundos
-    "delay_entre_sites": 10,  # segundos
-    "timeout_pagina": 30,  # segundos
+    "max_candidaturas_por_site": 5,   # aumenta depois que confirmar que funciona
+    "max_candidaturas_total": 20,
+    "delay_entre_candidaturas": 6,    # segundos — não reduza muito
+    "delay_entre_sites": 12,
+    "timeout_pagina": 30,
 }
 
 # ============================================================================
-# FILTROS (Evitar certas vagas)
+# FILTROS
 # ============================================================================
 FILTROS = {
-    "empresas_bloqueadas": [
-        # Adicione empresas que você NÃO quer se candidatar
-    ],
-    
+    "empresas_bloqueadas": [],
+
     "palavras_bloqueadas_titulo": [
         "senior", "sênior", "sr.",
         "pleno", "pl.",
@@ -84,10 +63,8 @@ FILTROS = {
         "tech lead", "lead",
         "gerente", "manager",
     ],
-    
-    "palavras_bloqueadas_descricao": [
-        # Adicione palavras que, se aparecerem na descrição, você quer evitar
-    ]
+
+    "palavras_bloqueadas_descricao": [],
 }
 
 # ============================================================================
@@ -95,15 +72,15 @@ FILTROS = {
 # ============================================================================
 CHROME = {
     "debug_port": 9222,
-    "user_data_dir": "C:\\Users\\Desktop\\AppData\\Local\\Google\\Chrome\\User Data",
-    "profile": "Profile 1"
+    "user_data_dir": "C:\\selenium_chrome_profile",
+    "profile": "Default",
 }
 
 # ============================================================================
-# LOGS
+# LOGS — caminho correto para c:\safadeza\
 # ============================================================================
 LOG = {
     "arquivo": "c:\\safadeza\\bot.log",
-    "nivel": "INFO",  # DEBUG, INFO, WARNING, ERROR
-    "formato": "%(asctime)s [%(levelname)s] %(message)s"
+    "nivel": "INFO",
+    "formato": "%(asctime)s [%(levelname)s] %(message)s",
 }
