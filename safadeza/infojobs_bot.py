@@ -248,6 +248,13 @@ class InfoJobsBot(BotBase):
             except:
                 pass
 
+            # Tira screenshot para debug
+            try:
+                self.driver.save_screenshot("c:\\safadeza\\debug_infojobs.png")
+                logger.info(f"   📸 Screenshot: debug_infojobs.png | URL: {self.driver.current_url}")
+            except:
+                pass
+
             logger.warning("   ⚠️ Não foi possível confirmar a candidatura no InfoJobs")
             return False
 

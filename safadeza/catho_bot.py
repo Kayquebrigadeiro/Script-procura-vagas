@@ -1,6 +1,6 @@
 """
-Bot Catho - Corrigido 2026
-Fixes: removido has-text, false positive return True, confirmação real
+Bot Catho - Focado em Candidatura Fácil 2026
+Fluxo: clica em "Enviar Candidatura Fácil" na listagem → fecha modal upsell → confirma toast
 """
 
 import time
@@ -9,14 +9,12 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from bot_base import BotBase
 from utils import (
-    logger, clicar_seguro, digitar_humano,
-    scroll_aleatorio, delay_humano, extrair_id_vaga
+    logger, clicar_seguro, scroll_aleatorio,
+    delay_humano, extrair_id_vaga
 )
-from config import BUSCA, PERFIL
+from config import BUSCA
 
 class CathoBot(BotBase):
-    """Bot para candidaturas no Catho"""
-
     def __init__(self, driver):
         super().__init__(driver, "catho")
         self.base_url = "https://www.catho.com.br"
@@ -24,16 +22,26 @@ class CathoBot(BotBase):
     def fazer_login(self) -> bool:
         try:
             logger.info("🔐 Verificando login no Catho...")
-            logger.info("⚠️  Se não estiver logado, faça login manualmente")
-            return True
+            self.driver.get("https://www.catho.com.br/area-candidato/")
+            time.sleep(3)
+            if "login" not in self.driver.current_url:
+                logger.info("✅ Logado no Catho")
+                return True
+            logger.warning("⚠️  Faça login manualmente no Catho e execute novamente")
+            return False
         except Exception as e:
-            logger.error(f"❌ Erro: {e}")
+            logger.error(f"❌ Erro ao verificar login: {e}")
             return False
 
     def buscar_vagas(self, palavra_chave: str) -> list:
+        """Busca vagas com Candidatura Fácil disponível"""
         try:
             from urllib.parse import urlencode
-            params = urlencode({"q": palavra_chave})
+            params = urlencode({
+                "q": palavra_chave,
+                "origem_apply": "caixa-de-busca-home-logada",
+                "entrada_apply": "direto",
+            })
             url = f"{self.base_url}/vagas/?{params}"
 
             logger.info(f"🌐 Acessando: {url}")
@@ -42,83 +50,87 @@ class CathoBot(BotBase):
             scroll_aleatorio(self.driver, 3)
             time.sleep(2)
 
-            seletores_cards = [
-                "article[class*='JobCard']",
-                "article[data-testid='job-card']",
-                "div[class*='JobCard']",
-                "article",
+            # Busca todos os botões de Candidatura Fácil visíveis na listagem
+            botoes = []
+            xpaths_botao = [
+                "//button[contains(., 'Enviar Candidatura Fácil')]",
+                "//button[contains(., 'Candidatura Fácil')]",
+                "//button[contains(., 'Candidatura fácil')]",
             ]
-
-            cards = []
-            for seletor in seletores_cards:
+            for xp in xpaths_botao:
                 try:
-                    cards = self.driver.find_elements(By.CSS_SELECTOR, seletor)
-                    if len(cards) >= 2:
-                        logger.info(f"✅ {len(cards)} cards com: {seletor}")
+                    encontrados = self.driver.find_elements(By.XPATH, xp)
+                    if encontrados:
+                        botoes = encontrados
+                        logger.info(f"✅ {len(botoes)} botões de Candidatura Fácil encontrados")
                         break
                 except:
                     continue
 
-            if not cards:
-                logger.warning("⚠️ Nenhum card encontrado no Catho")
+            if not botoes:
+                logger.warning("⚠️ Nenhum botão de Candidatura Fácil encontrado")
                 return []
 
             vagas = []
-            for card in cards[:20]:
+            for i, botao in enumerate(botoes):
                 try:
-                    # Título
-                    titulo = None
-                    seletores_titulo = [
-                        "h2 a", "h3 a",
-                        "a[data-testid='job-title']",
-                        "[class*='title'] a",
-                        "a[href*='/vagas/']",
-                    ]
-                    titulo_elem = None
-                    for sel in seletores_titulo:
+                    # Sobe até o card pai para pegar título e empresa
+                    card = None
+                    try:
+                        card = botao.find_element(By.XPATH, "./ancestor::article[1]")
+                    except:
                         try:
-                            titulo_elem = card.find_element(By.CSS_SELECTOR, sel)
-                            if titulo_elem and titulo_elem.text.strip():
-                                titulo = titulo_elem.text.strip()
-                                break
+                            card = botao.find_element(By.XPATH, "./ancestor::li[1]")
                         except:
-                            continue
+                            pass
 
-                    if not titulo or not titulo_elem:
-                        continue
-
-                    url_vaga = titulo_elem.get_attribute("href") or ""
-                    if not url_vaga.startswith("http"):
-                        url_vaga = self.base_url + url_vaga
-
-                    # Empresa
+                    titulo = f"Vaga {i+1}"
                     empresa = "Não informado"
-                    seletores_empresa = [
-                        "[class*='company']", "[class*='Company']",
-                        "[class*='employer']", "span[class*='name']",
-                    ]
-                    for sel in seletores_empresa:
-                        try:
-                            el = card.find_element(By.CSS_SELECTOR, sel)
-                            if el and el.text.strip():
-                                empresa = el.text.strip()
-                                break
-                        except:
+                    url_vaga = "#"
+
+                    if card:
+                        # Título
+                        for sel in ["h2 a", "h3 a", "a[href*='/vagas/']"]:
+                            try:
+                                el = card.find_element(By.CSS_SELECTOR, sel)
+                                if el and el.text.strip():
+                                    titulo = el.text.strip()
+                                    url_vaga = el.get_attribute("href") or "#"
+                                    break
+                            except:
+                                continue
+
+                        # Empresa
+                        for sel in ["[class*='company']", "[class*='Company']", "[class*='employer']"]:
+                            try:
+                                el = card.find_element(By.CSS_SELECTOR, sel)
+                                if el and el.text.strip():
+                                    empresa = el.text.strip()
+                                    break
+                            except:
+                                continue
+
+                        # Pula se já candidatou
+                        texto_card = card.text.lower()
+                        if "candidatura fácil realizada" in texto_card or "currículo já enviado" in texto_card:
+                            logger.debug(f"Pulando vaga já candidatada: {titulo}")
                             continue
 
-                    vaga_id = extrair_id_vaga(url_vaga, "catho") or url_vaga.split("/")[-2][:20]
+                    vaga_id = extrair_id_vaga(url_vaga, "catho") or f"catho_{i}_{int(time.time())}"
 
                     vagas.append({
                         "id": vaga_id,
                         "titulo": titulo,
                         "empresa": empresa,
                         "url": url_vaga,
+                        "_botao": botao,
                     })
 
                 except Exception as e:
-                    logger.debug(f"Erro ao processar card Catho: {e}")
+                    logger.debug(f"Erro ao processar botão {i}: {e}")
                     continue
 
+            logger.info(f"Catho: {len(vagas)} vagas disponíveis para candidatura")
             return vagas
 
         except Exception as e:
@@ -126,124 +138,68 @@ class CathoBot(BotBase):
             return []
 
     def candidatar_vaga(self, vaga: dict) -> bool:
+        """Clica em Candidatura Fácil, fecha modal upsell e confirma envio"""
         try:
-            logger.info("   🌐 Abrindo vaga...")
-            self.driver.get(vaga["url"])
-            time.sleep(3)
-            scroll_aleatorio(self.driver, 2)
-
-            logger.info("   🔍 Procurando botão de candidatura...")
-            botao = None
-
-            # CSS — sem has-text
-            seletores_css = [
-                "button[title*='Quero me candidatar']",
-                "button[class*='StyledButton'][class*='apply']",
-                "button[data-testid*='apply']",
-                "button[class*='apply-button']",
-            ]
-            for sel in seletores_css:
-                try:
-                    botao = WebDriverWait(self.driver, 5).until(
-                        EC.element_to_be_clickable((By.CSS_SELECTOR, sel))
-                    )
-                    if botao:
-                        break
-                except:
-                    continue
-
-            # Fallback XPath por texto
-            if not botao:
-                xpaths = [
-                    "//button[contains(., 'Quero me candidatar')]",
-                    "//button[contains(., 'Candidatar')]",
-                    "//button[contains(., 'Aplicar')]",
-                ]
-                for xp in xpaths:
-                    try:
-                        botao = WebDriverWait(self.driver, 3).until(
-                            EC.element_to_be_clickable((By.XPATH, xp))
-                        )
-                        if botao:
-                            break
-                    except:
-                        continue
+            botao = vaga.get("_botao")
 
             if not botao:
-                logger.info("   ⚠️ Botão não encontrado no Catho")
+                logger.warning("   ⚠️ Referência ao botão perdida")
                 return False
 
-            logger.info("   ✅ Botão encontrado! Clicando...")
+            try:
+                if not botao.is_displayed():
+                    logger.warning("   ⚠️ Botão não está visível")
+                    return False
+            except:
+                logger.warning("   ⚠️ Botão não está mais no DOM")
+                return False
+
+            logger.info(f"   🖱️  Clicando em Candidatura Fácil...")
             clicar_seguro(self.driver, botao)
             time.sleep(2)
 
-            # Preenche formulário
+            # Fecha modal upsell "Agora não"
             try:
-                campos_texto = self.driver.find_elements(By.CSS_SELECTOR, "input[type='text'], textarea")
-                for campo in campos_texto:
-                    if not campo.is_displayed():
-                        continue
-                    placeholder = (campo.get_attribute("placeholder") or "").lower()
-                    name = (campo.get_attribute("name") or "").lower()
-                    if "telefone" in placeholder or "phone" in name or "tel" in name:
-                        if not campo.get_attribute("value"):
-                            campo.clear()
-                            digitar_humano(campo, PERFIL["telefone"])
+                botao_agora_nao = WebDriverWait(self.driver, 4).until(
+                    EC.element_to_be_clickable((By.XPATH,
+                        "//button[contains(., 'Agora não')] | //a[contains(., 'Agora não')]"
+                    ))
+                )
+                logger.info("   💬 Modal de upsell detectado — fechando...")
+                clicar_seguro(self.driver, botao_agora_nao)
+                time.sleep(1)
             except:
                 pass
 
-            delay_humano(1, 2)
+            # Confirma via toast "Currículo enviado com sucesso!"
+            try:
+                WebDriverWait(self.driver, 5).until(
+                    EC.presence_of_element_located((By.XPATH,
+                        "//*[contains(., 'Currículo enviado com sucesso') or "
+                        "contains(., 'Candidatura realizada') or "
+                        "contains(., 'enviado com sucesso')]"
+                    ))
+                )
+                logger.info("   🎉 Candidatura CONFIRMADA!")
+                return True
+            except:
+                pass
 
-            # Botão de confirmação — XPath por texto (sem has-text CSS)
-            botao_confirmar = None
-            xpaths_confirmar = [
-                "//button[@type='submit']",
-                "//button[contains(., 'Confirmar')]",
-                "//button[contains(., 'Enviar')]",
-                "//button[contains(., 'Concluir')]",
-            ]
-            for xp in xpaths_confirmar:
-                try:
-                    el = self.driver.find_element(By.XPATH, xp)
-                    if el and el.is_displayed() and el.is_enabled():
-                        botao_confirmar = el
-                        break
-                except:
-                    continue
-
-            if botao_confirmar:
-                logger.info("   🚀 Confirmando candidatura...")
-                clicar_seguro(self.driver, botao_confirmar)
-                time.sleep(2)
-
-                # Verifica confirmação real
-                try:
-                    corpo = self.driver.find_element(By.TAG_NAME, "body").text
-                    if any(t in corpo for t in [
-                        "Candidatura enviada",
-                        "candidatou",
-                        "sucesso",
-                        "Obrigado",
-                    ]):
-                        logger.info("   🎉 Candidatura CONFIRMADA!")
-                        return True
-                except:
-                    pass
-
-                logger.warning("   ⚠️ Clicou em confirmar mas não encontrou mensagem de sucesso")
-                return False
-
-            # Se não achou botão confirmar mas clicou em candidatar
-            # verifica se já foi confirmado automaticamente
+            # Fallback — verifica texto na página
             try:
                 corpo = self.driver.find_element(By.TAG_NAME, "body").text
-                if any(t in corpo for t in ["candidatou", "Obrigado", "sucesso"]):
-                    logger.info("   🎉 Candidatura CONFIRMADA automaticamente!")
+                if any(t in corpo for t in [
+                    "Currículo enviado com sucesso",
+                    "Candidatura realizada",
+                    "candidatura fácil realizada",
+                    "enviado com sucesso",
+                ]):
+                    logger.info("   🎉 Candidatura CONFIRMADA!")
                     return True
             except:
                 pass
 
-            logger.warning("   ⚠️ Não foi possível confirmar a candidatura no Catho")
+            logger.warning("   ⚠️ Não confirmado — verifique manualmente no Catho")
             return False
 
         except Exception as e:

@@ -197,65 +197,82 @@ class IndeedBot(BotBase):
                 return False
 
             logger.info("   ✅ Botão encontrado! Clicando...")
+            aba_original = self.driver.current_window_handle
+            abas_antes = set(self.driver.window_handles)
+
             clicar_seguro(self.driver, botao)
-            time.sleep(3)
+            time.sleep(4)
 
-            # Preenche campos básicos
-            self._preencher_campos()
+            # Verifica se abriu nova aba (smartapply.indeed.com)
+            abas_depois = set(self.driver.window_handles)
+            novas_abas = abas_depois - abas_antes
 
-            # Navega pelas etapas
-            for etapa in range(6):
-                time.sleep(1.5)
+            if novas_abas:
+                nova_aba = novas_abas.pop()
+                self.driver.switch_to.window(nova_aba)
+                logger.info("   🆕 Nova aba detectada — trocando contexto...")
+                time.sleep(2)
 
-                # Verifica confirmação real
+            # Navega pelas etapas na aba do smartapply
+            for etapa in range(8):
+                time.sleep(2)
+
+                url_atual = self.driver.current_url
+                corpo = ""
                 try:
                     corpo = self.driver.find_element(By.TAG_NAME, "body").text
-                    if any(t in corpo for t in [
-                        "Candidatura enviada",
-                        "Application submitted",
-                        "Sua candidatura foi enviada",
-                        "candidatura foi enviada com sucesso",
-                    ]):
-                        logger.info(f"   🎉 Candidatura CONFIRMADA!")
-                        return True
                 except:
                     pass
 
-                # Botão Enviar
+                # Verifica confirmação real
+                if any(t in corpo for t in [
+                    "Candidatura enviada",
+                    "Application submitted",
+                    "sua candidatura foi enviada",
+                    "candidatura foi enviada com sucesso",
+                    "Sua candidatura foi enviada",
+                ]):
+                    logger.info("   🎉 Candidatura CONFIRMADA!")
+                    self.driver.switch_to.window(aba_original)
+                    return True
+
+                # Botão Enviar candidatura
                 botao_enviar = self._encontrar_botao_xpath([
-                    "//button[@type='submit' and contains(., 'Enviar')]",
                     "//button[contains(., 'Enviar candidatura')]",
                     "//button[contains(., 'Submit application')]",
-                    "//button[contains(@class, 'ia-continueButton') and contains(., 'Enviar')]",
+                    "//button[@type='submit' and contains(., 'Enviar')]",
+                    "//button[contains(@class, 'css-') and contains(., 'Enviar')]",
                 ])
 
                 if botao_enviar:
-                    logger.info(f"   🚀 Enviando (etapa {etapa + 1})...")
+                    logger.info(f"   🚀 Enviando candidatura (etapa {etapa + 1})...")
                     clicar_seguro(self.driver, botao_enviar)
-                    time.sleep(3)
+                    time.sleep(4)
 
-                    # Verifica confirmação após envio
                     try:
                         corpo = self.driver.find_element(By.TAG_NAME, "body").text
                         if any(t in corpo for t in [
                             "Candidatura enviada",
                             "Application submitted",
+                            "sua candidatura foi enviada",
                         ]):
                             logger.info("   🎉 Candidatura CONFIRMADA!")
+                            self.driver.switch_to.window(aba_original)
                             return True
                     except:
                         pass
 
-                    logger.warning("   ⚠️ Enviou mas não confirmou — verifique manualmente")
+                    self.driver.switch_to.window(aba_original)
                     return False
 
-                # Botão Continuar/Próximo
+                # Botão Continuar
                 botao_continuar = self._encontrar_botao_xpath([
                     "//button[contains(., 'Continuar')]",
                     "//button[contains(., 'Continue')]",
                     "//button[contains(., 'Próximo')]",
                     "//button[contains(., 'Next')]",
-                    "//button[@class and contains(@class, 'ia-continueButton')]",
+                    "//button[@data-testid='continueButton']",
+                    "//button[contains(@class, 'css-') and contains(., 'Continuar')]",
                 ])
 
                 if botao_continuar:
@@ -268,6 +285,7 @@ class IndeedBot(BotBase):
                 logger.warning(f"   ⚠️ Nenhum botão encontrado na etapa {etapa + 1}")
                 break
 
+            self.driver.switch_to.window(aba_original)
             return False
 
         except Exception as e:
